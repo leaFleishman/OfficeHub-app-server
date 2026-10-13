@@ -3,7 +3,7 @@
   "info": {
     "title": "Office Server API",
     "version": "1.0.0",
-    "description": "Swagger UI for the Office Server API without changing the existing Express server code."
+    "description": "API documentation for the Office Server."
   },
   "servers": [
     {
@@ -11,11 +11,7 @@
       "description": "Local server"
     }
   ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
+  "security": [{ "bearerAuth": [] }],
   "components": {
     "securitySchemes": {
       "bearerAuth": {
@@ -24,73 +20,173 @@
         "bearerFormat": "JWT"
       }
     },
+    "parameters": {
+      "Id": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": { "type": "integer", "minimum": 1, "maximum": 100000, "default": 1 }
+      },
+      "PageSize": {
+        "name": "pageSize",
+        "in": "query",
+        "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+      },
+      "Search": {
+        "name": "search",
+        "in": "query",
+        "schema": { "type": "string", "maxLength": 100 }
+      },
+      "InquiryStatus": {
+        "name": "status",
+        "in": "query",
+        "schema": { "type": "string", "enum": ["Open", "InProgress", "Closed"] }
+      }
+    },
     "schemas": {
       "Error": {
         "type": "object",
         "properties": {
-          "message": {
-            "type": "string",
-            "example": "Something went wrong"
-          }
+          "message": { "type": "string" }
         }
       },
       "LoginRequest": {
         "type": "object",
         "required": ["email", "password"],
         "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "example": "employee@example.com"
-          },
-          "password": {
-            "type": "string",
-            "format": "password",
-            "example": "secret123"
+          "email": { "type": "string", "format": "email", "maxLength": 254 },
+          "password": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }
+      },
+      "ProfileUpdate": {
+        "type": "object",
+        "minProperties": 1,
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "email": { "type": "string", "format": "email", "maxLength": 254 },
+          "phone": { "type": "string", "maxLength": 30, "nullable": true }
+        }
+      },
+      "PasswordChange": {
+        "type": "object",
+        "required": ["currentPassword", "newPassword"],
+        "properties": {
+          "currentPassword": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "newPassword": { "type": "string", "minLength": 8, "maxLength": 72 }
+        }
+      },
+      "RoomCreate": {
+        "type": "object",
+        "required": ["name", "capacity"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "capacity": { "type": "integer", "minimum": 1, "maximum": 500 },
+          "floor": { "type": "integer", "minimum": -5, "maximum": 200 },
+          "equipment": {
+            "type": "array",
+            "maxItems": 20,
+            "items": { "type": "string", "minLength": 1, "maxLength": 50 }
           }
         }
       },
-      "AuthSuccess": {
+      "RoomUpdate": {
         "type": "object",
+        "minProperties": 1,
         "properties": {
-          "token": {
-            "type": "string",
-            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          },
-          "user": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "email": { "type": "string" },
-              "role": { "type": "string" }
-            }
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "capacity": { "type": "integer", "minimum": 1, "maximum": 500 },
+          "floor": { "type": "integer", "minimum": -5, "maximum": 200 },
+          "equipment": {
+            "type": "array",
+            "maxItems": 20,
+            "items": { "type": "string", "minLength": 1, "maxLength": 50 }
           }
+        }
+      },
+      "BookingCreate": {
+        "type": "object",
+        "required": ["roomId", "subject", "start", "end"],
+        "properties": {
+          "roomId": { "type": "integer", "minimum": 1 },
+          "subject": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-20T09:00:00Z"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-20T10:00:00Z"
+          }
+        }
+      },
+      "CompanyCreate": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "floor": { "type": "integer", "minimum": -5, "maximum": 200, "nullable": true },
+          "phone": { "type": "string", "maxLength": 30, "nullable": true }
+        }
+      },
+      "CompanyUpdate": {
+        "type": "object",
+        "minProperties": 1,
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "floor": { "type": "integer", "minimum": -5, "maximum": 200, "nullable": true },
+          "phone": { "type": "string", "maxLength": 30, "nullable": true }
+        }
+      },
+      "EmployeeCreate": {
+        "type": "object",
+        "required": ["name", "email", "password"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "email": { "type": "string", "format": "email", "maxLength": 254 },
+          "phone": { "type": "string", "maxLength": 30 },
+          "password": { "type": "string", "minLength": 8, "maxLength": 72 },
+          "role": { "type": "string", "enum": ["Employee", "Manager"], "default": "Employee" },
+          "companyId": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "EmployeeRole": {
+        "type": "object",
+        "required": ["role"],
+        "properties": {
+          "role": { "type": "string", "enum": ["Employee", "Manager"] }
+        }
+      },
+      "InquiryCreate": {
+        "type": "object",
+        "required": ["subject", "content"],
+        "properties": {
+          "subject": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "content": { "type": "string", "minLength": 1, "maxLength": 5000 }
+        }
+      },
+      "InquiryHandle": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "type": "string", "enum": ["InProgress", "Closed"] },
+          "reply": { "type": "string", "minLength": 1, "maxLength": 5000 }
         }
       }
     }
   },
   "paths": {
-    "/health": {
-      "get": {
-        "summary": "Health check",
-        "responses": {
-          "200": {
-            "description": "Service is healthy",
-            "content": {
-              "application/json": {
-                "example": { "status": "ok" }
-              }
-            }
-          },
-          "503": {
-            "description": "Database unavailable"
-          }
-        }
-      }
-    },
     "/": {
       "get": {
+        "tags": ["System"],
         "summary": "Service root",
+        "security": [],
         "responses": {
           "200": {
             "description": "Service metadata",
@@ -108,10 +204,22 @@
         }
       }
     },
+    "/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Health check",
+        "security": [],
+        "responses": {
+          "200": { "description": "Service is healthy" },
+          "503": { "description": "Database unavailable" }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
-        "summary": "Login",
         "tags": ["Auth"],
+        "summary": "Login",
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -121,16 +229,9 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Successful authentication",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthSuccess" }
-              }
-            }
-          },
+          "200": { "description": "Authenticated; returns a JWT and user details" },
           "400": {
-            "description": "Invalid credentials or bad input",
+            "description": "Invalid credentials or request",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }
@@ -142,116 +243,544 @@
     },
     "/api/auth/me": {
       "get": {
-        "summary": "Current user",
         "tags": ["Auth"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "Get current authenticated user",
         "responses": {
-          "200": {
-            "description": "Authenticated user",
-            "content": {
-              "application/json": {
-                "example": {
-                  "id": "uuid",
-                  "email": "user@example.com",
-                  "role": "employee"
-                }
-              }
-            }
-          },
+          "200": { "description": "Current user" },
           "401": { "description": "Unauthorized" }
         }
       }
     },
     "/api/profile": {
       "get": {
-        "summary": "Get profile",
         "tags": ["Profile"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "Get profile",
         "responses": {
           "200": { "description": "Profile returned" },
           "401": { "description": "Unauthorized" }
         }
       },
       "put": {
-        "summary": "Update profile",
         "tags": ["Profile"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "Update profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfileUpdate" }
+            }
+          }
+        },
         "responses": {
           "200": { "description": "Profile updated" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/profile/password": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Change password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasswordChange" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Password changed" },
+          "400": { "description": "Invalid request or current password" },
           "401": { "description": "Unauthorized" }
         }
       }
     },
     "/api/rooms": {
       "get": {
-        "summary": "List rooms",
         "tags": ["Rooms"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "List rooms",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" },
+          { "$ref": "#/components/parameters/Search" }
+        ],
         "responses": {
           "200": { "description": "Rooms list" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Rooms"],
+        "summary": "Create room (Admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RoomCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Room created" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/rooms/available": {
+      "get": {
+        "tags": ["Rooms"],
+        "summary": "List available rooms",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "minCapacity",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" }
+        ],
+        "responses": {
+          "200": { "description": "Available rooms" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/rooms/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "tags": ["Rooms"],
+        "summary": "Get room",
+        "responses": {
+          "200": { "description": "Room details" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Room not found" }
+        }
+      },
+      "put": {
+        "tags": ["Rooms"],
+        "summary": "Update room (Admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RoomUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Room updated" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["Rooms"],
+        "summary": "Delete room (Admin)",
+        "responses": {
+          "204": { "description": "Room deleted" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/rooms/{id}/bookings": {
+      "get": {
+        "tags": ["Rooms", "Bookings"],
+        "summary": "List bookings for a room",
+        "parameters": [
+          { "$ref": "#/components/parameters/Id" },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" }
+        ],
+        "responses": {
+          "200": { "description": "Bookings for the room" },
           "401": { "description": "Unauthorized" }
         }
       }
     },
     "/api/bookings": {
       "get": {
-        "summary": "List bookings",
         "tags": ["Bookings"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "List bookings (Manager or Admin)",
+        "parameters": [
+          { "name": "employeeId", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+          { "name": "roomId", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+          { "name": "companyId", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" }
+        ],
         "responses": {
           "200": { "description": "Bookings list" },
-          "401": { "description": "Unauthorized" }
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
         }
       },
       "post": {
-        "summary": "Create booking",
         "tags": ["Bookings"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "Create booking (Employee or Manager)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BookingCreate" }
+            }
+          }
+        },
         "responses": {
           "201": { "description": "Booking created" },
-          "401": { "description": "Unauthorized" }
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/bookings/mine": {
+      "get": {
+        "tags": ["Bookings"],
+        "summary": "List my bookings (Employee or Manager)",
+        "parameters": [
+          {
+            "name": "upcoming",
+            "in": "query",
+            "schema": { "type": "boolean", "default": false }
+          },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" }
+        ],
+        "responses": {
+          "200": { "description": "Current user's bookings" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/bookings/{id}": {
+      "delete": {
+        "tags": ["Bookings"],
+        "summary": "Cancel booking (owner or Admin)",
+        "parameters": [{ "$ref": "#/components/parameters/Id" }],
+        "responses": {
+          "204": { "description": "Booking cancelled" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Booking not found" }
         }
       }
     },
     "/api/employees": {
       "get": {
-        "summary": "List employees",
         "tags": ["Employees"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "List employees (Manager or Admin)",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" },
+          { "$ref": "#/components/parameters/Search" },
+          { "name": "companyId", "in": "query", "schema": { "type": "integer", "minimum": 1 } }
+        ],
         "responses": {
           "200": { "description": "Employees list" },
-          "401": { "description": "Unauthorized" }
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Employees"],
+        "summary": "Create employee (Manager or Admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EmployeeCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Employee created" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/employees/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "tags": ["Employees"],
+        "summary": "Get employee (Manager or Admin)",
+        "responses": {
+          "200": { "description": "Employee details" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Employee not found" }
+        }
+      },
+      "put": {
+        "tags": ["Employees"],
+        "summary": "Update employee (Manager or Admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfileUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Employee updated" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Employee not found" }
+        }
+      }
+    },
+    "/api/employees/{id}/block": {
+      "patch": {
+        "tags": ["Employees"],
+        "summary": "Block employee (Manager or Admin)",
+        "parameters": [{ "$ref": "#/components/parameters/Id" }],
+        "responses": {
+          "200": { "description": "Employee blocked" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/employees/{id}/unblock": {
+      "patch": {
+        "tags": ["Employees"],
+        "summary": "Unblock employee (Manager or Admin)",
+        "parameters": [{ "$ref": "#/components/parameters/Id" }],
+        "responses": {
+          "200": { "description": "Employee unblocked" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/employees/{id}/role": {
+      "patch": {
+        "tags": ["Employees"],
+        "summary": "Change employee role (Manager or Admin)",
+        "parameters": [{ "$ref": "#/components/parameters/Id" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EmployeeRole" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Employee role updated" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
         }
       }
     },
     "/api/companies": {
       "get": {
-        "summary": "List companies",
         "tags": ["Companies"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "List companies (Admin)",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" },
+          { "$ref": "#/components/parameters/Search" }
+        ],
         "responses": {
           "200": { "description": "Companies list" },
-          "401": { "description": "Unauthorized" }
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Companies"],
+        "summary": "Create company (Admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CompanyCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Company created" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/companies/mine": {
+      "get": {
+        "tags": ["Companies"],
+        "summary": "Get my company (Manager)",
+        "responses": {
+          "200": { "description": "Company details" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden or account is not linked to a company" }
+        }
+      }
+    },
+    "/api/companies/{id}": {
+      "put": {
+        "tags": ["Companies"],
+        "summary": "Update company (Admin)",
+        "parameters": [{ "$ref": "#/components/parameters/Id" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CompanyUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Company updated" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Company not found" }
         }
       }
     },
     "/api/inquiries": {
       "get": {
-        "summary": "List inquiries",
         "tags": ["Inquiries"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "List all inquiries (Admin)",
+        "parameters": [
+          { "$ref": "#/components/parameters/InquiryStatus" },
+          { "$ref": "#/components/parameters/Search" },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" }
+        ],
         "responses": {
           "200": { "description": "Inquiries list" },
-          "401": { "description": "Unauthorized" }
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
         }
       },
       "post": {
-        "summary": "Create inquiry",
         "tags": ["Inquiries"],
-        "security": [{ "bearerAuth": [] }],
+        "summary": "Create inquiry (Employee or Manager)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InquiryCreate" }
+            }
+          }
+        },
         "responses": {
           "201": { "description": "Inquiry created" },
-          "401": { "description": "Unauthorized" }
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/inquiries/mine": {
+      "get": {
+        "tags": ["Inquiries"],
+        "summary": "List my inquiries (Employee or Manager)",
+        "parameters": [
+          { "$ref": "#/components/parameters/InquiryStatus" },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" }
+        ],
+        "responses": {
+          "200": { "description": "Current user's inquiries" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/inquiries/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "tags": ["Inquiries"],
+        "summary": "Get inquiry (owner or Admin)",
+        "responses": {
+          "200": { "description": "Inquiry details" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Inquiry not found" }
+        }
+      },
+      "patch": {
+        "tags": ["Inquiries"],
+        "summary": "Handle inquiry (Admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InquiryHandle" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Inquiry updated" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Inquiry not found" }
+        }
+      }
+    },
+    "/api/dashboard/employee": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Employee dashboard (Employee)",
+        "responses": {
+          "200": { "description": "Employee dashboard data" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/dashboard/company": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Company dashboard (Manager)",
+        "responses": {
+          "200": { "description": "Company dashboard data" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/dashboard/building": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Building dashboard (Admin)",
+        "responses": {
+          "200": { "description": "Building dashboard data" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
         }
       }
     }

@@ -10,7 +10,6 @@ import { pool } from './db/pool.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import routes from './routes/index.js';
 import { requestContext } from './utils/requestContext.js';
-
 export function createApp(): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -35,13 +34,13 @@ export function createApp(): Express {
   app.use((req, _res, next) => requestContext.run({ requestId: String(req.id) }, next));
 
   app.use(helmet());
-  app.use(
-    cors({
-      origin: env.CORS_ORIGIN.split(',').map((o) => o.trim()),
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
-    }),
-  );
+  const corsOptions = {
+    origin: [...env.CORS_ORIGIN.split(',').map((o) => o.trim()), 'http://172.22.144.1:8080'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  };
+  app.options(/.*/, cors(corsOptions));
+  app.use(cors(corsOptions));
   app.use(express.json({ limit: '100kb' }));
 
   app.get('/health', async (_req, res) => {
