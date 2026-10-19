@@ -6,6 +6,7 @@ export type User = {
   name: string;
   email: string;
   phone: string | null;
+  address: string | null;
   role: Role;
   isBlocked: boolean;
   createdAt: Date;
@@ -30,6 +31,11 @@ export type Room = {
   createdAt: Date;
 };
 
+export type BookingParticipant = {
+  id: number;
+  name: string;
+};
+
 // subject/userName are nullable because other people's bookings are redacted
 // in the room calendar view.
 export type Booking = {
@@ -39,10 +45,12 @@ export type Booking = {
   userId: number;
   userName: string | null;
   subject: string | null;
-  start: Date;
-  end: Date;
+  date: string;
+  startTime: string;
+  endTime: string;
   status: BookingStatus;
   createdAt: Date;
+  participants: BookingParticipant[];
 };
 
 export type Inquiry = {

@@ -1,14 +1,26 @@
 import { z } from 'zod';
-import { dateTime, id, pagination } from './common.js';
+import { calendarDate, dateTime, id, pagination } from './common.js';
 
-export const createBookingBody = z
-  .object({
-    roomId: id,
-    subject: z.string().trim().min(1).max(200),
-    start: dateTime,
-    end: dateTime,
-  })
-  .refine((b) => b.end > b.start, { message: 'end must be after start', path: ['end'] });
+export const createBookingBody = z.object({
+  roomId: id,
+  subject: z.string().trim().min(1).max(200),
+  date: calendarDate,
+  startTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'Must be a time in HH:mm format'),
+  endTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'Must be a time in HH:mm format'),
+  participantIds: z
+    .array(id)
+    .max(500)
+    .superRefine((ids, ctx) => {
+      const seen = new Set<number>();
+      ids.forEach((participantId, index) => {
+        if (seen.has(participantId)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Participant IDs must be unique', path: [index] });
+        }
+        seen.add(participantId);
+      });
+    })
+    .default([]),
+});
 
 export const myBookingsQuery = z.object({
   upcoming: z

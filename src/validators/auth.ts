@@ -8,6 +8,7 @@ export const updateProfileBody = atLeastOneField(
     name: z.string().trim().min(1).max(100).optional(),
     email: email.optional(),
     phone: phone.nullable().optional(),
+    address: z.string().trim().min(1).max(250).nullable().optional(),
   }),
 );
 

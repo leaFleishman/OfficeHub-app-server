@@ -27,6 +27,8 @@ async function seed(): Promise<void> {
     const demoUsers: [string, string, string][] = [
       ['Demo Manager', 'manager@demo.local', 'Manager'],
       ['Demo Employee', 'employee@demo.local', 'Employee'],
+      ['Demo Employee 2', 'employee2@demo.local', 'Employee'],
+      ['Demo Employee 3', 'employee3@demo.local', 'Employee'],
     ];
     for (const [name, email, role] of demoUsers) {
       await db.query(
@@ -48,6 +50,53 @@ async function seed(): Promise<void> {
         [name, capacity, floor, equipment],
       );
     }
+
+    await db.query(
+      `WITH samples (email, subject, content) AS (
+         VALUES
+           ('employee@demo.local', 'Air conditioning issue', 'The air conditioning in the meeting area is not cooling properly.'),
+           ('employee2@demo.local', 'Request for an extra monitor', 'Could an extra monitor be provided at my workstation?'),
+           ('manager@demo.local', 'Kitchen supplies', 'The shared kitchen is running low on coffee and paper cups.')
+       )
+       INSERT INTO inquiries (user_id, subject, content)
+       SELECT u.id, s.subject, s.content
+       FROM samples s
+       JOIN users u ON lower(u.email) = lower(s.email)
+       WHERE NOT EXISTS (
+         SELECT 1 FROM inquiries i
+         WHERE i.user_id = u.id AND i.subject = s.subject
+       )`,
+    );
+
+    await db.query(
+      `WITH samples (email, room_name, subject, start_offset) AS (
+         VALUES
+           ('employee@demo.local', 'Room A', 'Demo project planning', interval '10 hours'),
+           ('employee2@demo.local', 'Room B', 'Demo team meeting', interval '11 hours'),
+           ('manager@demo.local', 'Board Room', 'Demo monthly review', interval '12 hours')
+       ),
+       slots AS (
+         SELECT u.id AS user_id, r.id AS room_id, s.subject,
+                date_trunc('day', now()) + interval '1 day' + s.start_offset AS start_time
+         FROM samples s
+         JOIN users u ON lower(u.email) = lower(s.email)
+         JOIN rooms r ON r.name = s.room_name
+       )
+       INSERT INTO bookings (room_id, user_id, subject, start_time, end_time)
+       SELECT s.room_id, s.user_id, s.subject, s.start_time, s.start_time + interval '1 hour'
+       FROM slots s
+       WHERE NOT EXISTS (
+         SELECT 1 FROM bookings b
+         WHERE b.user_id = s.user_id AND b.subject = s.subject AND b.start_time > now()
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM bookings b
+         WHERE b.room_id = s.room_id
+           AND b.status = 'Active'
+           AND tstzrange(b.start_time, b.end_time) &&
+               tstzrange(s.start_time, s.start_time + interval '1 hour')
+       )`,
+    );
   });
 }
 

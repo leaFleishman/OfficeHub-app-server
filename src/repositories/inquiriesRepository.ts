@@ -10,7 +10,11 @@ const COLUMNS = `i.id, i.user_id AS "userId", u.name AS "userName", i.subject, i
 const FROM = `inquiries i JOIN users u ON u.id = i.user_id`;
 
 export type NewInquiry = { userId: number; subject: string; content: string };
-export type InquiryFilter = PageParams & { userId?: number; status?: InquiryStatus; search?: string };
+export type InquiryFilter = PageParams & {
+  userId?: number;
+  status?: InquiryStatus | 'All';
+  search?: string;
+};
 export type InquiryDecision = { status: InquiryStatus; reply?: string; handledBy: number };
 
 export async function findById(id: number, db: Db = pool): Promise<Inquiry | null> {
@@ -29,7 +33,7 @@ export async function insert({ userId, subject, content }: NewInquiry, db: Db = 
 export function list({ userId, status, search, page, pageSize }: InquiryFilter, db: Db = pool): Promise<Page<Inquiry>> {
   const where = new Where();
   if (userId) where.add('i.user_id = ?', userId);
-  if (status) where.add('i.status = ?', status);
+  if (status && status !== 'All') where.add('i.status = ?', status);
   if (search) where.add('i.subject ILIKE ?', likePattern(search));
   return runPaginated<Inquiry>(db, {
     columns: COLUMNS,

@@ -10,15 +10,17 @@ npm install
 cp .env.example .env        # set DATABASE_URL, JWT_SECRET (32+ chars), SEED_ADMIN_PASSWORD
 npm run typecheck           # tsc --noEmit: run this first, before anything else
 npm run migrate             # creates the schema (safe to re-run)
-npm run seed                # admin user; in development also a demo company, users and rooms
+npm run seed                # admin user; in development also demo employees, rooms, bookings and inquiries
 npm run dev                 # tsx watch, http://localhost:3000   (health check: GET /health)
 ```
+
+Swagger UI is available at `http://localhost:3000/swagger/`.
 
 For production: `npm run build` (compiles to `dist/`), then `npm run migrate:prod`,
 `npm run seed:prod` and `npm start`.
 
 Dev seed logins (password = `SEED_ADMIN_PASSWORD`): `admin@office.local`,
-`manager@demo.local`, `employee@demo.local`.
+`manager@demo.local`, `employee@demo.local`, `employee2@demo.local`, `employee3@demo.local`.
 Pretty logs in development: `npm run dev | npx pino-pretty`.
 
 ## Architecture (request flow)

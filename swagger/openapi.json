@@ -45,7 +45,7 @@
       "InquiryStatus": {
         "name": "status",
         "in": "query",
-        "schema": { "type": "string", "enum": ["Open", "InProgress", "Closed"] }
+        "schema": { "type": "string", "enum": ["Open", "InProgress", "Closed", "All"] }
       }
     },
     "schemas": {
@@ -69,7 +69,8 @@
         "properties": {
           "name": { "type": "string", "minLength": 1, "maxLength": 100 },
           "email": { "type": "string", "format": "email", "maxLength": 254 },
-          "phone": { "type": "string", "maxLength": 30, "nullable": true }
+          "phone": { "type": "string", "maxLength": 30, "nullable": true },
+          "address": { "type": "string", "minLength": 1, "maxLength": 250, "nullable": true }
         }
       },
       "PasswordChange": {
@@ -110,19 +111,46 @@
       },
       "BookingCreate": {
         "type": "object",
-        "required": ["roomId", "subject", "start", "end"],
+        "required": ["roomId", "subject", "date", "startTime", "endTime"],
         "properties": {
           "roomId": { "type": "integer", "minimum": 1 },
           "subject": { "type": "string", "minLength": 1, "maxLength": 200 },
-          "start": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-10-20T09:00:00Z"
-          },
-          "end": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-10-20T10:00:00Z"
+          "date": { "type": "string", "format": "date", "example": "2027-12-03" },
+          "startTime": { "type": "string", "format": "time", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$", "example": "09:00" },
+          "endTime": { "type": "string", "format": "time", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$", "example": "11:30" },
+          "participantIds": {
+            "type": "array",
+            "maxItems": 500,
+            "uniqueItems": true,
+            "items": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+          }
+        }
+      },
+      "BookingResponse": {
+        "type": "object",
+        "required": ["id", "roomId", "roomName", "userId", "date", "startTime", "endTime", "status", "createdAt", "participants"],
+        "properties": {
+          "id": { "type": "integer" },
+          "roomId": { "type": "integer" },
+          "roomName": { "type": "string" },
+          "userId": { "type": "integer" },
+          "userName": { "type": "string", "nullable": true },
+          "subject": { "type": "string", "nullable": true },
+          "date": { "type": "string", "format": "date", "example": "2027-12-03" },
+          "startTime": { "type": "string", "format": "time", "example": "09:00" },
+          "endTime": { "type": "string", "format": "time", "example": "11:30" },
+          "status": { "type": "string", "enum": ["Active", "Cancelled"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" }
+              }
+            }
           }
         }
       },
@@ -413,7 +441,25 @@
           { "$ref": "#/components/parameters/PageSize" }
         ],
         "responses": {
-          "200": { "description": "Bookings for the room" },
+          "200": {
+            "description": "Bookings for the room",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/BookingResponse" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "pageSize": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
           "401": { "description": "Unauthorized" }
         }
       }
@@ -432,7 +478,25 @@
           { "$ref": "#/components/parameters/PageSize" }
         ],
         "responses": {
-          "200": { "description": "Bookings list" },
+          "200": {
+            "description": "Bookings list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/BookingResponse" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "pageSize": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
           "401": { "description": "Unauthorized" },
           "403": { "description": "Forbidden" }
         }
@@ -449,7 +513,14 @@
           }
         },
         "responses": {
-          "201": { "description": "Booking created" },
+          "201": {
+            "description": "Booking created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BookingResponse" }
+              }
+            }
+          },
           "400": { "description": "Invalid request" },
           "401": { "description": "Unauthorized" },
           "403": { "description": "Forbidden" }
@@ -470,7 +541,25 @@
           { "$ref": "#/components/parameters/PageSize" }
         ],
         "responses": {
-          "200": { "description": "Current user's bookings" },
+          "200": {
+            "description": "Current user's bookings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/BookingResponse" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "pageSize": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
           "401": { "description": "Unauthorized" },
           "403": { "description": "Forbidden" }
         }
@@ -756,7 +845,25 @@
         "tags": ["Dashboard"],
         "summary": "Employee dashboard (Employee)",
         "responses": {
-          "200": { "description": "Employee dashboard data" },
+          "200": {
+            "description": "Employee dashboard data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "nextMeeting": {
+                      "allOf": [{ "$ref": "#/components/schemas/BookingResponse" }],
+                      "nullable": true
+                    },
+                    "meetingsThisWeek": { "type": "integer" },
+                    "upcomingMeetings": { "type": "integer", "description": "Active meetings scheduled to start in the future" },
+                    "openInquiries": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
           "401": { "description": "Unauthorized" },
           "403": { "description": "Forbidden" }
         }

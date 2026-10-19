@@ -4,9 +4,9 @@ import type { Db } from '../db/pool.js';
 import type { Page, PageParams, User, UserWithPassword } from '../types/domain.js';
 import { Where, buildUpdate, likePattern, runPaginated } from '../utils/sql.js';
 
-const COLUMNS = `id, company_id AS "companyId", name, email, phone, role,
+const COLUMNS = `id, company_id AS "companyId", name, email, phone, address, role,
   is_blocked AS "isBlocked", created_at AS "createdAt"`;
-const UPDATABLE = { name: 'name', email: 'email', phone: 'phone' };
+const UPDATABLE = { name: 'name', email: 'email', phone: 'phone', address: 'address' };
 
 export type UserListFilter = PageParams & { companyId?: number; search?: string };
 export type NewUser = {
@@ -17,7 +17,7 @@ export type NewUser = {
   passwordHash: string;
   role: Role;
 };
-export type UserPatch = { name?: string; email?: string; phone?: string | null };
+export type UserPatch = { name?: string; email?: string; phone?: string | null; address?: string | null };
 
 export async function findById(id: number, db: Db = pool): Promise<User | null> {
   const { rows } = await db.query(`SELECT ${COLUMNS} FROM users WHERE id = $1`, [id]);

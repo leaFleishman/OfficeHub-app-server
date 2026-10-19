@@ -44,7 +44,7 @@ export async function update(id: number, patch: UpdateRoomBody): Promise<Room> {
 }
 
 // Resource contention: the room row is locked FOR UPDATE, which waits for any
-// in-flight booking (they hold KEY SHARE) and blocks new ones until we finish.
+// in-flight booking (they hold FOR SHARE) and blocks new ones until we finish.
 // The "no future bookings" check therefore cannot be invalidated mid-delete.
 export async function remove(id: number): Promise<void> {
   await withTransaction(async (tx) => {

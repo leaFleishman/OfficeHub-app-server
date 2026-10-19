@@ -31,29 +31,68 @@ export async function listForRoom(
   if (!(await roomsRepo.findById(roomId))) throw notFound('Room not found');
   const result = await bookingsRepo.list({ roomId, date, timezone: env.APP_TIMEZONE, page, pageSize });
   const items = result.items.map((b) =>
-    b.userId === actor.id || actor.role === ROLES.ADMIN ? b : { ...b, subject: null, userName: null },
+    b.userId === actor.id || b.participants.some(({ id }) => id === actor.id) || actor.role === ROLES.ADMIN
+      ? b
+      : { ...b, subject: null, userName: null, participants: [] },
   );
   return { ...result, items };
 }
 
-export async function create(actor: User, { roomId, subject, start, end }: CreateBookingBody): Promise<Booking> {
+export async function create(
+  actor: User,
+  { roomId, subject, date, startTime, endTime, participantIds: requestedParticipantIds }: CreateBookingBody,
+): Promise<Booking> {
+  const localTimes = await bookingsRepo.resolveLocalTimes(date, startTime, endTime, env.APP_TIMEZONE);
+  if (!localTimes.startValid || !localTimes.endValid) {
+    const details: Record<string, string> = {};
+    if (!localTimes.startValid) details.startTime = 'This local time does not exist in the application timezone';
+    if (!localTimes.endValid) details.endTime = 'This local time does not exist in the application timezone';
+    throw badRequest('The selected date and time are invalid in the application timezone', details);
+  }
+  const { start, end } = localTimes;
+  if (end <= start) {
+    throw badRequest('endTime must be after startTime', { endTime: 'Must be after startTime' });
+  }
   if (start.getTime() <= Date.now()) {
-    throw badRequest('A booking must start in the future', { start: 'Must be in the future' });
+    throw badRequest('A booking must start in the future', { date: 'Must be in the future' });
   }
   if (end.getTime() - start.getTime() > MAX_BOOKING_HOURS * HOUR_MS) {
-    throw badRequest(`A booking cannot exceed ${MAX_BOOKING_HOURS} hours`, { end: 'Too long' });
+    throw badRequest(`A booking cannot exceed ${MAX_BOOKING_HOURS} hours`, { endTime: 'Too long' });
   }
+
+  const participantIds = [...new Set(requestedParticipantIds)].filter((id) => id !== actor.id);
 
   try {
     const booking = await withTransaction(async (tx) => {
-      // Blocks a concurrent room deletion; does not block other bookings.
-      if (!(await roomsRepo.lockForBooking(roomId, tx))) throw notFound('Room not found');
+      const capacity = await roomsRepo.lockForBooking(roomId, tx);
+      if (capacity === null) throw notFound('Room not found');
+      if (participantIds.length + 1 > capacity) {
+        throw badRequest('The number of attendees exceeds the room capacity', {
+          participantIds: 'Exceeds room capacity',
+        });
+      }
+      if (participantIds.length) {
+        if (actor.companyId === null) {
+          throw badRequest("Participants must belong to the organizer's company", {
+            participantIds: 'Invalid participants',
+          });
+        }
+        const eligibleIds = await bookingsRepo.findEligibleParticipantIds(participantIds, actor.companyId, tx);
+        if (eligibleIds.length !== participantIds.length) {
+          throw badRequest('One or more participants are invalid, inactive, or outside your company', {
+            participantIds: 'Invalid participants',
+          });
+        }
+      }
       // The exclusion constraint is the single source of truth for overlaps:
       // of two simultaneous requests for the same slot, exactly one succeeds.
-      const id = await bookingsRepo.insert({ roomId, userId: actor.id, subject, start, end }, tx);
+      const id = await bookingsRepo.insert(
+        { roomId, userId: actor.id, subject, start, end, participantIds },
+        tx,
+      );
       const created = await bookingsRepo.findById(id, tx);
       if (!created) throw new Error('Booking vanished inside its own transaction');
-      return created;
+      return bookingsRepo.toBooking(created);
     });
     log.info({ bookingId: booking.id, roomId, start, end }, 'Booking created');
     return booking;

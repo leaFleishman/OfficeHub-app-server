@@ -6,6 +6,7 @@ import * as bookingsRepo from './bookingsRepository.js';
 export type EmployeeDashboard = {
   nextMeeting: Booking | null;
   meetingsThisWeek: number;
+  upcomingMeetings: number;
   openInquiries: number;
 };
 
@@ -35,19 +36,28 @@ const DAY_FROM = `(${LOCAL_DAY} AT TIME ZONE $1::text)`;
 const DAY_TO = `((${LOCAL_DAY} + interval '1 day') AT TIME ZONE $1::text)`;
 
 export async function employeeStats(userId: number, timezone: string, db: Db = pool): Promise<EmployeeDashboard> {
-  const [nextMeeting, week, inquiries] = await Promise.all([
+  const [nextMeeting, meetings, inquiries] = await Promise.all([
     bookingsRepo.findNextForUser(userId, db),
     db.query(
-      `SELECT COUNT(*)::int AS n FROM bookings
-       WHERE user_id = $2 AND status = 'Active'
-         AND start_time >= ${WEEK_FROM} AND start_time < ${WEEK_TO}`,
+      `SELECT COUNT(*) FILTER (
+                WHERE start_time >= ${WEEK_FROM} AND start_time < ${WEEK_TO}
+              )::int AS "thisWeek",
+              COUNT(*) FILTER (WHERE start_time > now())::int AS upcoming
+       FROM bookings
+       WHERE status = 'Active'
+         AND (user_id = $2 OR EXISTS (
+           SELECT 1 FROM booking_participants bp
+           WHERE bp.booking_id = bookings.id AND bp.user_id = $2
+         ))`,
       [timezone, userId],
     ),
-    db.query(`SELECT COUNT(*)::int AS n FROM inquiries WHERE user_id = $1 AND status <> 'Closed'`, [userId]),
+    db.query(`SELECT COUNT(*)::int AS n FROM inquiries WHERE user_id = $1 AND status = 'Open'`, [userId]),
   ]);
+  const meetingCounts = meetings.rows[0] as { thisWeek: number; upcoming: number };
   return {
     nextMeeting,
-    meetingsThisWeek: (week.rows[0] as { n: number }).n,
+    meetingsThisWeek: meetingCounts.thisWeek,
+    upcomingMeetings: meetingCounts.upcoming,
     openInquiries: (inquiries.rows[0] as { n: number }).n,
   };
 }

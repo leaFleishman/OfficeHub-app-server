@@ -16,11 +16,11 @@ export async function findById(id: number, db: Db = pool): Promise<Room | null> 
   return (rows[0] as Room | undefined) ?? null;
 }
 
-// Concurrency: a booking takes a KEY SHARE lock on the room row. It does not
-// block other bookings, but it blocks a concurrent DELETE (which takes FOR UPDATE).
-export async function lockForBooking(id: number, db: Db): Promise<boolean> {
-  const { rowCount } = await db.query('SELECT id FROM rooms WHERE id = $1 FOR KEY SHARE', [id]);
-  return rowCount === 1;
+// Share locks allow concurrent bookings while preventing deletion or capacity
+// changes until a booking and its participants have been validated and saved.
+export async function lockForBooking(id: number, db: Db): Promise<number | null> {
+  const { rows } = await db.query('SELECT capacity FROM rooms WHERE id = $1 FOR SHARE', [id]);
+  return (rows[0] as { capacity: number } | undefined)?.capacity ?? null;
 }
 
 export async function lockForDelete(id: number, db: Db): Promise<Room | null> {

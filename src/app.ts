@@ -3,6 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import type { Express } from 'express';
 import helmet from 'helmet';
+import { resolve } from 'node:path';
 import { pinoHttp } from 'pino-http';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
@@ -34,6 +35,13 @@ export function createApp(): Express {
   app.use((req, _res, next) => requestContext.run({ requestId: String(req.id) }, next));
 
   app.use(helmet());
+  app.use('/swagger', (_req, res, next) => {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' https://unpkg.com data:; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; object-src 'none'; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com 'unsafe-inline'",
+    );
+    next();
+  });
   const corsOptions = {
     origin: [...env.CORS_ORIGIN.split(',').map((o) => o.trim()), 'http://172.22.144.1:8080'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -42,6 +50,7 @@ export function createApp(): Express {
   app.options(/.*/, cors(corsOptions));
   app.use(cors(corsOptions));
   app.use(express.json({ limit: '100kb' }));
+  app.use('/swagger', express.static(resolve(process.cwd(), 'swagger')));
 
   app.get('/health', async (_req, res) => {
     try {

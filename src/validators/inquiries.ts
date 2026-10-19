@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { pagination, search } from './common.js';
 
-const status = z.enum(['Open', 'InProgress', 'Closed']);
+const status = z.enum(['Open', 'InProgress', 'Closed', 'All']);
 
 export const createInquiryBody = z.object({
   subject: z.string().trim().min(1).max(200),
