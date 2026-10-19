@@ -61,6 +61,14 @@ export async function create(
   }
 
   const participantIds = [...new Set(requestedParticipantIds)].filter((id) => id !== actor.id);
+  const bookingInput: CreateBookingBody = {
+    roomId,
+    subject,
+    date,
+    startTime,
+    endTime,
+    participantIds,
+  };
 
   try {
     const booking = await withTransaction(async (tx) => {
@@ -86,10 +94,7 @@ export async function create(
       }
       // The exclusion constraint is the single source of truth for overlaps:
       // of two simultaneous requests for the same slot, exactly one succeeds.
-      const id = await bookingsRepo.insert(
-        { roomId, userId: actor.id, subject, start, end, participantIds },
-        tx,
-      );
+      const id = await bookingsRepo.insert(bookingInput, actor.id, { start, end }, tx);
       const created = await bookingsRepo.findById(id, tx);
       if (!created) throw new Error('Booking vanished inside its own transaction');
       return bookingsRepo.toBooking(created);

@@ -3,6 +3,7 @@ import type { Db } from '../db/pool.js';
 import { env } from '../config/env.js';
 import type { Booking, BookingParticipant, Page, PageParams } from '../types/domain.js';
 import { Where, runPaginated } from '../utils/sql.js';
+import type { CreateBookingBody } from '../validators/bookings.js';
 
 const COLUMNS = `b.id, b.room_id AS "roomId", r.name AS "roomName", b.user_id AS "userId",
   u.name AS "userName", b.subject, b.start_time AS "start", b.end_time AS "end",
@@ -14,7 +15,11 @@ const COLUMNS = `b.id, b.room_id AS "roomId", r.name AS "roomName", b.user_id AS
   ), '[]'::json) AS participants`;
 const FROM = `bookings b JOIN rooms r ON r.id = b.room_id JOIN users u ON u.id = b.user_id`;
 
-type BookingRecord = Omit<Booking, 'date' | 'startTime' | 'endTime'> & { start: Date; end: Date };
+type BookingRecord = Omit<Booking, 'date' | 'startTime' | 'endTime'> & {
+  start: Date;
+  end: Date;
+  participants: BookingParticipant[];
+};
 
 const localDateTimeFormatter = new Intl.DateTimeFormat('en', {
   timeZone: env.APP_TIMEZONE,
@@ -53,14 +58,7 @@ function toBooking(record: BookingRecord): Booking {
   };
 }
 
-export type NewBooking = {
-  roomId: number;
-  userId: number;
-  subject: string;
-  start: Date;
-  end: Date;
-  participantIds: number[];
-};
+export type NewBooking = CreateBookingBody;
 export type LocalBookingTimes = { start: Date; end: Date; startValid: boolean; endValid: boolean };
 
 export type BookingFilter = PageParams & {
@@ -128,22 +126,23 @@ export async function resolveLocalTimes(
 // Relies on the bookings_no_overlap exclusion constraint: an overlapping insert
 // fails with SQLSTATE 23P01, which the service turns into a 409.
 export async function insert(
-  { roomId, userId, subject, start, end, participantIds }: NewBooking,
+  booking: NewBooking,
+  userId: number,
+  { start, end }: Pick<LocalBookingTimes, 'start' | 'end'>,
   db: Db = pool,
 ): Promise<number> {
   const { rows } = await db.query(
     `INSERT INTO bookings (room_id, user_id, subject, start_time, end_time)
      VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [roomId, userId, subject, start, end],
+    [booking.roomId, userId, booking.subject, start, end],
   );
   const id = (rows[0] as { id: number }).id;
-  if (participantIds.length) {
-    await db.query(
-      `INSERT INTO booking_participants (booking_id, user_id)
-         SELECT $1, participants.user_id FROM unnest($2::int[]) AS participants(user_id)`,
-      [id, participantIds],
-    );
-  }
+  const attendeeIds = [...new Set([userId, ...booking.participantIds])];
+  await db.query(
+    `INSERT INTO booking_participants (booking_id, user_id)
+     SELECT $1, attendees.user_id FROM unnest($2::int[]) AS attendees(user_id)`,
+    [id, attendeeIds],
+  );
   return id;
 }
 
