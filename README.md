@@ -15,6 +15,9 @@ npm run dev                 # tsx watch, http://localhost:3000   (health check: 
 ```
 
 Swagger UI is available at `http://localhost:3000/swagger/`.
+In development, the API also accepts browser requests from `http://localhost` and
+`http://127.0.0.1` on any port. In production, set `CORS_ORIGIN` to the exact
+frontend origin (comma-separated for multiple origins).
 
 For production: `npm run build` (compiles to `dist/`), then `npm run migrate:prod`,
 `npm run seed:prod` and `npm start`.

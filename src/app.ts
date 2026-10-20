@@ -42,8 +42,13 @@ export function createApp(): Express {
     );
     next();
   });
+  const configuredOrigins = [...env.CORS_ORIGIN.split(',').map((origin) => origin.trim()), 'http://172.22.144.1:8080'];
   const corsOptions = {
-    origin: [...env.CORS_ORIGIN.split(',').map((o) => o.trim()), 'http://172.22.144.1:8080'],
+    origin: (origin: string | undefined, callback: (error: Error | null, allowed?: boolean) => void) => {
+      const isLocalDevelopmentOrigin =
+        env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin ?? '');
+      callback(null, !origin || configuredOrigins.includes(origin) || isLocalDevelopmentOrigin);
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   };
