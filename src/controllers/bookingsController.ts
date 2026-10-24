@@ -1,6 +1,11 @@
 import { endpoint } from '../middleware/endpoint.js';
 import * as bookingsService from '../services/bookingsService.js';
-import { createBookingBody, listBookingsQuery, myBookingsQuery } from '../validators/bookings.js';
+import {
+  createBookingBody,
+  listAllBookingsQuery,
+  listBookingsQuery,
+  myBookingsQuery,
+} from '../validators/bookings.js';
 import { idParams } from '../validators/common.js';
 import { roomBookingsQuery } from '../validators/rooms.js';
 
@@ -11,6 +16,13 @@ export const listMine = endpoint({ query: myBookingsQuery }, async ({ query }, {
 export const list = endpoint({ query: listBookingsQuery }, async ({ query }, { res, user }) => {
   res.json(await bookingsService.listVisible(user, query));
 });
+
+export const listAllForAdmin = endpoint(
+  { query: listAllBookingsQuery },
+  async ({ query }, { res, user }) => {
+    res.json(await bookingsService.listAllForAdmin(user, query));
+  },
+);
 
 export const listForRoom = endpoint(
   { params: idParams, query: roomBookingsQuery },

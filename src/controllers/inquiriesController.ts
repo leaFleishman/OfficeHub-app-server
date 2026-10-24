@@ -27,3 +27,4 @@ export const create = endpoint({ body: createInquiryBody }, async ({ body }, { r
 export const handle = endpoint({ params: idParams, body: handleInquiryBody }, async ({ params, body }, { res, user }) => {
   res.json(await inquiriesService.handle(user, params.id, body));
 });
+

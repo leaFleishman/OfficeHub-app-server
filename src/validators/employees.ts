@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { atLeastOneField, email, id, pagination, password, phone, search } from './common.js';
+import { atLeastOneField, email, id, pagination, phone, search } from './common.js';
 
 const assignableRole = z.enum(['Employee', 'Manager']);
 
@@ -9,7 +9,7 @@ export const createEmployeeBody = z.object({
   name: z.string().trim().min(1).max(100),
   email,
   phone: phone.optional(),
-  password, // initial password, chosen by whoever creates the account
+  password: z.string().min(4, 'At least 4 characters').max(72, 'At most 72 characters'),
   role: assignableRole.default('Employee'),
   companyId: id.optional(), // required for Admin, ignored for Manager
 });

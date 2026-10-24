@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
-import { createBookingBody } from '../src/validators/bookings.js';
+import { createBookingBody, listAllBookingsQuery } from '../src/validators/bookings.js';
 
 const bookingInput = {
   roomId: 1,
@@ -22,17 +22,48 @@ test('booking validator accepts optional, valid, unique participant IDs', () => 
   assert.equal(createBookingBody.safeParse({ ...bookingInput, participantIds: ['2'] }).success, false);
 });
 
+test('all-bookings query does not apply room, date, or employee filters', () => {
+  assert.deepEqual(listAllBookingsQuery.parse({ page: '1', pageSize: '100' }), {
+    page: 1,
+    pageSize: 100,
+  });
+  assert.deepEqual(
+    listAllBookingsQuery.parse({
+      roomId: '123',
+      from: '2030-01-01T00:00:00Z',
+      to: '2030-01-02T00:00:00Z',
+      employeeId: '456',
+      page: '1',
+      pageSize: '100',
+    }),
+    {
+      page: 1,
+      pageSize: 100,
+    },
+  );
+});
+
 const testDatabaseUrl = process.env.OFFICEHUB_TEST_DATABASE_URL;
 if (testDatabaseUrl) {
   process.env.DATABASE_URL = testDatabaseUrl;
   process.env.NODE_ENV = 'test';
   process.env.JWT_SECRET ??= 'officehub-integration-test-secret-32-chars';
 
-  const [{ pool }, { migrate }, bookingsService, bookingsRepository, usersRepository, errors, { env }] =
+  const [
+    { pool },
+    { migrate },
+    bookingsService,
+    dashboardRepository,
+    bookingsRepository,
+    usersRepository,
+    errors,
+    { env },
+  ] =
     await Promise.all([
       import('../src/db/pool.js'),
       import('../src/db/migrate.js'),
       import('../src/services/bookingsService.js'),
+      import('../src/repositories/dashboardRepository.js'),
       import('../src/repositories/bookingsRepository.js'),
       import('../src/repositories/usersRepository.js'),
       import('../src/utils/errors.js'),
@@ -78,6 +109,13 @@ if (testDatabaseUrl) {
       const blockedParticipant = await insertUser('Blocked participant', companyId, true);
       const crossCompanyParticipant = await insertUser('Other company participant', otherCompanyId);
       const unrelated = await insertUser('Unrelated employee', companyId);
+      const adminResult = await pool.query<{ id: number }>(
+        `INSERT INTO users (name, email, password_hash, role)
+         VALUES ($1, $2, 'test-hash', 'Admin') RETURNING id`,
+        ['Test Admin', `${suffix}-admin@test.invalid`],
+      );
+      const adminId = adminResult.rows[0].id;
+      userIds.push(adminId);
       const roomResult = await pool.query<{ id: number }>(
         `INSERT INTO rooms (name, capacity) VALUES ($1, 4), ($2, 2) RETURNING id`,
         [`Booking test room ${suffix}`, `Booking test small room ${suffix}`],
@@ -87,9 +125,11 @@ if (testDatabaseUrl) {
       const organizerUser = await usersRepository.findById(organizer.id);
       const participantUser = await usersRepository.findById(participant.id);
       const unrelatedUser = await usersRepository.findById(unrelated.id);
+      const adminUser = await usersRepository.findById(adminId);
       assert.ok(organizerUser);
       assert.ok(participantUser);
       assert.ok(unrelatedUser);
+      assert.ok(adminUser);
 
       const date = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const request = {
@@ -141,6 +181,44 @@ if (testDatabaseUrl) {
       assert.ok(organizerBookings.items.some(({ id }) => id === created.id));
       assert.ok(participantBookings.items.some(({ id }) => id === created.id));
       assert.ok(!unrelatedBookings.items.some(({ id }) => id === created.id));
+
+      const companyDashboard = await dashboardRepository.companyStats(companyId, env.APP_TIMEZONE);
+      assert.deepEqual(companyDashboard.nextMeeting, {
+        subject: request.subject,
+        date,
+        startTime: request.startTime,
+        roomName: created.roomName,
+      });
+      const companyWithoutMeetings = await dashboardRepository.companyStats(otherCompanyId, env.APP_TIMEZONE);
+      assert.equal(companyWithoutMeetings.nextMeeting, null);
+
+      const adminBooking = await bookingsService.create(adminUser, {
+        ...request,
+        startTime: '12:00',
+        endTime: '13:00',
+        participantIds: [participant.id, crossCompanyParticipant.id, adminId],
+      });
+      assert.deepEqual(
+        adminBooking.participants.map(({ id }) => id).sort((a, b) => a - b),
+        [adminId, participant.id, crossCompanyParticipant.id].sort((a, b) => a - b),
+      );
+      const adminBookings = await bookingsService.listMine(adminId, query);
+      assert.ok(adminBookings.items.some(({ id }) => id === adminBooking.id));
+
+      const adminDashboard = await dashboardRepository.companyStats(null, env.APP_TIMEZONE);
+      assert.ok(adminDashboard.nextMeeting);
+
+      const secondRoomBooking = await bookingsService.create(organizerUser, {
+        ...request,
+        roomId: roomIds[1],
+        startTime: '14:00',
+        endTime: '15:00',
+        participantIds: [],
+      });
+      const allBookings = await bookingsService.listAllForAdmin(adminUser, { page: 1, pageSize: 100 });
+      assert.ok(allBookings.items.some(({ id }) => id === adminBooking.id));
+      assert.ok(allBookings.items.some(({ id }) => id === secondRoomBooking.id));
+      assert.notEqual(adminBooking.roomId, secondRoomBooking.roomId);
 
       const privateRoomBookings = await bookingsService.listForRoom(unrelatedUser, roomIds[0], {
         page: 1,

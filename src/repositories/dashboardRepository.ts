@@ -11,6 +11,7 @@ export type EmployeeDashboard = {
 };
 
 export type CompanyDashboard = {
+  nextMeeting: { subject: string; date: string; startTime: string; roomName: string } | null;
   employees: { active: number; blocked: number };
   meetingsThisWeek: number;
   topRooms: { roomName: string; bookings: number }[];
@@ -62,34 +63,55 @@ export async function employeeStats(userId: number, timezone: string, db: Db = p
   };
 }
 
-export async function companyStats(companyId: number, timezone: string, db: Db = pool): Promise<CompanyDashboard> {
-  const [people, week, topRooms, recent] = await Promise.all([
+export async function companyStats(
+  companyId: number | null,
+  timezone: string,
+  db: Db = pool,
+): Promise<CompanyDashboard> {
+  const [nextMeeting, people, week, topRooms, recent] = await Promise.all([
+    db.query<NonNullable<CompanyDashboard['nextMeeting']>>(
+      `SELECT b.subject,
+              to_char(b.start_time AT TIME ZONE $1::text, 'YYYY-MM-DD') AS date,
+              to_char(b.start_time AT TIME ZONE $1::text, 'HH24:MI') AS "startTime",
+              r.name AS "roomName"
+       FROM bookings b
+       JOIN users u ON u.id = b.user_id
+       JOIN rooms r ON r.id = b.room_id
+       WHERE b.status = 'Active' AND b.start_time > now()
+         AND ($2::int IS NULL OR u.company_id = $2)
+       ORDER BY b.start_time, b.id
+       LIMIT 1`,
+      [timezone, companyId],
+    ),
     db.query(
       `SELECT COUNT(*) FILTER (WHERE NOT is_blocked)::int AS active,
               COUNT(*) FILTER (WHERE is_blocked)::int AS blocked
-       FROM users WHERE company_id = $1 AND role <> 'Admin'`,
+       FROM users WHERE ($1::int IS NULL OR company_id = $1) AND role <> 'Admin'`,
       [companyId],
     ),
     db.query(
       `SELECT COUNT(*)::int AS n FROM bookings b JOIN users u ON u.id = b.user_id
-       WHERE u.company_id = $2 AND b.status = 'Active'
+       WHERE ($2::int IS NULL OR u.company_id = $2) AND b.status = 'Active'
          AND b.start_time >= ${WEEK_FROM} AND b.start_time < ${WEEK_TO}`,
       [timezone, companyId],
     ),
     db.query(
       `SELECT r.name AS "roomName", COUNT(*)::int AS bookings
        FROM bookings b JOIN users u ON u.id = b.user_id JOIN rooms r ON r.id = b.room_id
-       WHERE u.company_id = $1 AND b.status = 'Active' AND b.start_time >= now() - interval '30 days'
+       WHERE ($1::int IS NULL OR u.company_id = $1)
+         AND b.status = 'Active' AND b.start_time >= now() - interval '30 days'
        GROUP BY r.id, r.name ORDER BY bookings DESC, r.name LIMIT 5`,
       [companyId],
     ),
     db.query(
       `SELECT id, name, created_at AS "joinedAt" FROM users
-       WHERE company_id = $1 AND role <> 'Admin' ORDER BY created_at DESC, id DESC LIMIT 5`,
+       WHERE ($1::int IS NULL OR company_id = $1)
+         AND role <> 'Admin' ORDER BY created_at DESC, id DESC LIMIT 5`,
       [companyId],
     ),
   ]);
   return {
+    nextMeeting: nextMeeting.rows[0] ?? null,
     employees: people.rows[0] as unknown as CompanyDashboard['employees'],
     meetingsThisWeek: (week.rows[0] as { n: number }).n,
     topRooms: topRooms.rows as unknown as CompanyDashboard['topRooms'],

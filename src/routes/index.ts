@@ -15,6 +15,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 const { EMPLOYEE, MANAGER, ADMIN } = ROLES;
 
 const staff = authorize(EMPLOYEE, MANAGER); // roles that attend meetings and file inquiries
+const bookingUsers = authorize(EMPLOYEE, MANAGER, ADMIN);
 const people = authorize(MANAGER, ADMIN); // roles that manage employees
 const admin = authorize(ADMIN);
 
@@ -51,9 +52,10 @@ router.put('/rooms/:id', admin, roomsCtl.update);
 router.delete('/rooms/:id', admin, roomsCtl.remove);
 
 // Bookings
-router.get('/bookings/mine', staff, bookingsCtl.listMine);
+router.get('/bookings/mine', bookingUsers, bookingsCtl.listMine);
+router.get('/bookings/all', admin, bookingsCtl.listAllForAdmin);
 router.get('/bookings', people, bookingsCtl.list);
-router.post('/bookings', staff, bookingsCtl.create);
+router.post('/bookings', bookingUsers, bookingsCtl.create);
 router.delete('/bookings/:id', bookingsCtl.cancel); // owner or admin (checked in the service)
 
 // Employees (company manager: own company; admin: all)
@@ -67,9 +69,11 @@ router.patch('/employees/:id/role', people, employeesCtl.setRole);
 
 // Companies
 router.get('/companies', admin, companiesCtl.list);
-router.get('/companies/mine', authorize(MANAGER), companiesCtl.mine);
+router.get('/companies/mine', authorize(MANAGER, ADMIN), companiesCtl.mine);
+router.put('/companies/mine', authorize(MANAGER, ADMIN), companiesCtl.updateMine);
 router.post('/companies', admin, companiesCtl.create);
 router.put('/companies/:id', admin, companiesCtl.update);
+router.delete('/companies/:id', admin, companiesCtl.remove);
 
 // Inquiries
 router.get('/inquiries/mine', staff, inquiriesCtl.listMine);
@@ -80,7 +84,7 @@ router.patch('/inquiries/:id', admin, inquiriesCtl.handle);
 
 // Dashboards
 router.get('/dashboard/employee', authorize(EMPLOYEE), dashboardCtl.employee);
-router.get('/dashboard/company', authorize(MANAGER), dashboardCtl.company);
+router.get('/dashboard/company', authorize(EMPLOYEE, MANAGER, ADMIN), dashboardCtl.company);
 router.get('/dashboard/building', admin, dashboardCtl.building);
 
 export default router;

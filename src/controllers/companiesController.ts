@@ -13,10 +13,20 @@ export const mine = endpoint({}, async (_input, { res, user }) => {
   res.json(await companiesService.get(user.companyId));
 });
 
+export const updateMine = endpoint({ body: updateCompanyBody }, async ({ body }, { res, user }) => {
+  if (user.companyId === null) throw forbidden('This account is not linked to a company');
+  res.json(await companiesService.update(user.companyId, body));
+});
+
 export const create = endpoint({ body: createCompanyBody }, async ({ body }, { res }) => {
   res.status(201).json(await companiesService.create(body));
 });
 
 export const update = endpoint({ params: idParams, body: updateCompanyBody }, async ({ params, body }, { res }) => {
   res.json(await companiesService.update(params.id, body));
+});
+
+export const remove = endpoint({ params: idParams }, async ({ params }, { res }) => {
+  await companiesService.remove(params.id);
+  res.status(204).end();
 });

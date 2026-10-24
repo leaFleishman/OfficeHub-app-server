@@ -7,7 +7,12 @@ import * as roomsRepo from '../repositories/roomsRepository.js';
 import type { Booking, Page, User } from '../types/domain.js';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 import { PG, isPgError } from '../utils/pgErrors.js';
-import type { CreateBookingBody, ListBookingsQuery, MyBookingsQuery } from '../validators/bookings.js';
+import type {
+  CreateBookingBody,
+  ListAllBookingsQuery,
+  ListBookingsQuery,
+  MyBookingsQuery,
+} from '../validators/bookings.js';
 import type { RoomBookingsQuery } from '../validators/rooms.js';
 
 const log = logger.child({ module: 'bookings' });
@@ -20,6 +25,14 @@ export const listMine = (userId: number, query: MyBookingsQuery): Promise<Page<B
 export function listVisible(actor: User, query: ListBookingsQuery): Promise<Page<Booking>> {
   const companyId = actor.role === ROLES.ADMIN ? query.companyId : (actor.companyId ?? undefined);
   return bookingsRepo.list({ ...query, userId: query.employeeId, companyId });
+}
+
+export function listAllForAdmin(actor: User, query: ListAllBookingsQuery): Promise<Page<Booking>> {
+  if (actor.role !== ROLES.ADMIN) throw forbidden();
+  return bookingsRepo.list({
+    page: query.page,
+    pageSize: query.pageSize,
+  });
 }
 
 // Calendar view of one room: occupancy is public, details are private.
@@ -80,7 +93,7 @@ export async function create(
         });
       }
       if (participantIds.length) {
-        if (actor.companyId === null) {
+        if (actor.companyId === null && actor.role !== ROLES.ADMIN) {
           throw badRequest("Participants must belong to the organizer's company", {
             participantIds: 'Invalid participants',
           });

@@ -81,13 +81,15 @@ export { toBooking };
 
 export async function findEligibleParticipantIds(
   ids: number[],
-  companyId: number,
+  companyId: number | null,
   db: Db,
 ): Promise<number[]> {
   if (!ids.length) return [];
   const { rows } = await db.query(
     `SELECT id FROM users
-     WHERE id = ANY($1::int[]) AND company_id = $2 AND role <> 'Admin' AND is_blocked = false
+     WHERE id = ANY($1::int[])
+       AND ($2::int IS NULL OR company_id = $2)
+       AND role <> 'Admin' AND is_blocked = false
      FOR SHARE`,
     [ids, companyId],
   );

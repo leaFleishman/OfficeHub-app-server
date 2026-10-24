@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { atLeastOneField, email, password, phone } from './common.js';
+import { atLeastOneField, email, phone } from './common.js';
 
 export const loginBody = z.object({ email, password: z.string().min(1).max(200) });
 
@@ -14,7 +14,7 @@ export const updateProfileBody = atLeastOneField(
 
 export const changePasswordBody = z.object({
   currentPassword: z.string().min(1).max(200),
-  newPassword: password,
+  newPassword: z.string().min(4, 'At least 4 characters').max(72, 'At most 72 characters'),
 });
 
 export type LoginBody = z.infer<typeof loginBody>;

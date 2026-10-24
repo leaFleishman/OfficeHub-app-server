@@ -39,3 +39,15 @@ export async function update(id: number, patch: UpdateCompanyBody): Promise<Comp
     return rethrowDuplicateName(err);
   }
 }
+
+export async function remove(id: number): Promise<void> {
+  try {
+    if (!(await companiesRepo.remove(id))) throw notFound('Company not found');
+  } catch (err) {
+    if (isPgError(err, PG.FOREIGN_KEY)) {
+      throw conflict('Company cannot be deleted while employees are assigned to it');
+    }
+    throw err;
+  }
+  log.info({ companyId: id }, 'Company deleted');
+}

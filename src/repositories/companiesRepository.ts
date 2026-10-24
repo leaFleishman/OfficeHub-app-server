@@ -38,3 +38,8 @@ export async function update(id: number, patch: CompanyPatch, db: Db = pool): Pr
   );
   return (rows[0] as Company | undefined) ?? null;
 }
+
+export async function remove(id: number, db: Db = pool): Promise<boolean> {
+  const { rows } = await db.query('DELETE FROM companies WHERE id = $1 RETURNING id', [id]);
+  return rows.length > 0;
+}

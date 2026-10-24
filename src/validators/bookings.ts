@@ -41,6 +41,11 @@ export const listBookingsQuery = z.object({
   ...pagination,
 });
 
+export const listAllBookingsQuery = z.object({
+  ...pagination,
+});
+
 export type CreateBookingBody = z.infer<typeof createBookingBody>;
 export type MyBookingsQuery = z.infer<typeof myBookingsQuery>;
 export type ListBookingsQuery = z.infer<typeof listBookingsQuery>;
+export type ListAllBookingsQuery = z.infer<typeof listAllBookingsQuery>;
