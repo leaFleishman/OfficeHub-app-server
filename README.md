@@ -8,6 +8,7 @@ Implements the API contract for the three roles (`Employee`, `Manager`, `Admin`)
 ```bash
 npm install
 cp .env.example .env        # set DATABASE_URL, JWT_SECRET (32+ chars), SEED_ADMIN_PASSWORD
+# Optional: put machine-specific overrides in .env.local; it takes precedence over .env.
 npm run typecheck           # tsc --noEmit: run this first, before anything else
 npm run migrate             # creates the schema (safe to re-run)
 npm run seed                # admin user; in development also demo employees, rooms, bookings and inquiries
@@ -66,6 +67,9 @@ routes  ->  middleware (auth, endpoint)  ->  controllers  ->  services  ->  repo
   inquiry returns `409`).
 - **Unique data:** emails and room/company names are protected by unique indexes; violations map
   to `409`.
+- **Company creation:** `POST /api/companies` requires a `manager` object with `name`, `email`,
+  and `password`. The manager is created with the company in one transaction and always receives
+  the `Manager` role.
 - **Migrations:** guarded by a Postgres advisory lock, so two instances can start together.
 
 ## Pagination

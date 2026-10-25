@@ -1,5 +1,10 @@
+import bcrypt from 'bcryptjs';
+import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
+import { ROLES } from '../constants.js';
+import { withTransaction } from '../db/pool.js';
 import * as companiesRepo from '../repositories/companiesRepository.js';
+import * as usersRepo from '../repositories/usersRepository.js';
 import type { Company, Page } from '../types/domain.js';
 import { conflict, notFound } from '../utils/errors.js';
 import { PG, isPgError } from '../utils/pgErrors.js';
@@ -8,8 +13,17 @@ import type { CreateCompanyBody, ListCompaniesQuery, UpdateCompanyBody } from '.
 const log = logger.child({ module: 'companies' });
 
 const rethrowDuplicateName = (err: unknown): never => {
-  if (isPgError(err, PG.UNIQUE)) throw conflict('A company with this name already exists', { name: 'Already in use' });
+  if (isPgError(err, PG.UNIQUE, 'companies_name_key')) {
+    throw conflict('A company with this name already exists', { name: 'Already in use' });
+  }
   throw err;
+};
+
+const rethrowCreateConflict = (err: unknown): never => {
+  if (isPgError(err, PG.UNIQUE, 'users_email_uq')) {
+    throw conflict('Email is already in use', { 'manager.email': 'Already in use' });
+  }
+  return rethrowDuplicateName(err);
 };
 
 export const list = (query: ListCompaniesQuery): Promise<Page<Company>> => companiesRepo.list(query);
@@ -21,12 +35,27 @@ export async function get(id: number): Promise<Company> {
 }
 
 export async function create(body: CreateCompanyBody): Promise<Company> {
+  const { manager, ...companyDetails } = body;
+  const passwordHash = await bcrypt.hash(manager.password, env.BCRYPT_ROUNDS);
   try {
-    const company = await companiesRepo.create(body);
-    log.info({ companyId: company.id }, 'Company created');
+    const { company, createdManager } = await withTransaction(async (tx) => {
+      const company = await companiesRepo.create(companyDetails, tx);
+      const createdManager = await usersRepo.create(
+        {
+          companyId: company.id,
+          name: manager.name,
+          email: manager.email,
+          passwordHash,
+          role: ROLES.MANAGER,
+        },
+        tx,
+      );
+      return { company, createdManager };
+    });
+    log.info({ companyId: company.id, managerId: createdManager.id }, 'Company and manager created');
     return company;
   } catch (err) {
-    return rethrowDuplicateName(err);
+    return rethrowCreateConflict(err);
   }
 }
 

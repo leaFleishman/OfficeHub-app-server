@@ -156,11 +156,20 @@
       },
       "CompanyCreate": {
         "type": "object",
-        "required": ["name"],
+        "required": ["name", "manager"],
         "properties": {
           "name": { "type": "string", "minLength": 1, "maxLength": 100 },
           "floor": { "type": "integer", "minimum": -5, "maximum": 200, "nullable": true },
-          "phone": { "type": "string", "maxLength": 30, "nullable": true }
+          "phone": { "type": "string", "maxLength": 30, "nullable": true },
+          "manager": {
+            "type": "object",
+            "required": ["name", "email", "password"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+              "email": { "type": "string", "format": "email", "maxLength": 254 },
+              "password": { "type": "string", "minLength": 4, "maxLength": 72 }
+            }
+          }
         }
       },
       "CompanyUpdate": {
