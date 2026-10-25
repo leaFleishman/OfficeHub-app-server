@@ -5,8 +5,9 @@ import { logger } from '../config/logger.js';
 
 export const pool = new pg.Pool({
   connectionString: env.DATABASE_URL,
-  ssl: env.DATABASE_SSL,
-  max: env.DB_POOL_MAX,
+ssl: env.DATABASE_SSL
+    ? { rejectUnauthorized: false }
+    : false,  max: env.DB_POOL_MAX,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
   query_timeout: 10_000,
