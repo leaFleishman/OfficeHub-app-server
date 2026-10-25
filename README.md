@@ -23,6 +23,25 @@ frontend origin (comma-separated for multiple origins).
 For production: `npm run build` (compiles to `dist/`), then `npm run migrate:prod`,
 `npm run seed:prod` and `npm start`.
 
+## Docker
+
+Build and run the production image:
+
+```bash
+docker build -t officehub-server .
+docker run --rm --env-file .env -p 3000:3000 officehub-server
+```
+
+Before starting the server for the first time, run the migrations:
+
+```bash
+docker run --rm --env-file .env officehub-server node dist/db/migrate.js
+```
+
+The container does not include `.env`; provide configuration at runtime with `--env-file`
+or environment variables. If PostgreSQL is running on the host machine, set the host in
+`DATABASE_URL` to `host.docker.internal` instead of `localhost` so the container can reach it.
+
 Dev seed logins (password = `SEED_ADMIN_PASSWORD`): `admin@office.local`,
 `manager@demo.local`, `employee@demo.local`, `employee2@demo.local`, `employee3@demo.local`.
 Pretty logs in development: `npm run dev | npx pino-pretty`.
