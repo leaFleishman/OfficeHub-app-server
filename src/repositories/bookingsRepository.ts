@@ -70,6 +70,7 @@ export type BookingFilter = PageParams & {
   date?: string; // YYYY-MM-DD, interpreted in `timezone`
   timezone?: string;
   upcomingOnly?: boolean;
+  includeCancelled?: boolean;
 };
 
 export async function findById(id: number, db: Db = pool): Promise<BookingRecord | null> {
@@ -184,8 +185,9 @@ export async function findNextForUser(userId: number, db: Db = pool): Promise<Bo
 // `from`/`to` and `date` use overlap semantics (a booking that spans the
 // boundary is included). `date` is a calendar day in `timezone`.
 export async function list(filter: BookingFilter, db: Db = pool): Promise<Page<Booking>> {
-  const { userId, companyId, roomId, from, to, date, timezone, upcomingOnly, page, pageSize } = filter;
-  const where = new Where().add(`b.status = 'Active'`);
+  const { userId, companyId, roomId, from, to, date, timezone, upcomingOnly, includeCancelled, page, pageSize } = filter;
+  const where = new Where();
+  if (!includeCancelled) where.add(`b.status = 'Active'`);
   if (userId) {
     where.add(
       `(b.user_id = ? OR EXISTS (

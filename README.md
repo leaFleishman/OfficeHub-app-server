@@ -46,6 +46,10 @@ Dev seed logins (password = `SEED_ADMIN_PASSWORD`): `admin@office.local`,
 `manager@demo.local`, `employee@demo.local`, `employee2@demo.local`, `employee3@demo.local`.
 Pretty logs in development: `npm run dev | npx pino-pretty`.
 
+Managers can list all bookings, including cancelled bookings, for their own company with
+`GET /api/bookings/company`. Admins use the same endpoint with `?companyId=<id>` to select a
+company. Results are paginated.
+
 ## Architecture (request flow)
 
 ```

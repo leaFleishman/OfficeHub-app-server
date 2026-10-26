@@ -1,6 +1,7 @@
 import { endpoint } from '../middleware/endpoint.js';
 import * as bookingsService from '../services/bookingsService.js';
 import {
+  companyBookingsQuery,
   createBookingBody,
   listAllBookingsQuery,
   listBookingsQuery,
@@ -21,6 +22,13 @@ export const listAllForAdmin = endpoint(
   { query: listAllBookingsQuery },
   async ({ query }, { res, user }) => {
     res.json(await bookingsService.listAllForAdmin(user, query));
+  },
+);
+
+export const listForCompany = endpoint(
+  { query: companyBookingsQuery },
+  async ({ query }, { res, user }) => {
+    res.json(await bookingsService.listForCompany(user, query));
   },
 );
 

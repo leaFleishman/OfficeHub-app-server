@@ -53,6 +53,7 @@ router.delete('/rooms/:id', admin, roomsCtl.remove);
 
 // Bookings
 router.get('/bookings/mine', bookingUsers, bookingsCtl.listMine);
+router.get('/bookings/company', people, bookingsCtl.listForCompany);
 router.get('/bookings/all', admin, bookingsCtl.listAllForAdmin);
 router.get('/bookings', people, bookingsCtl.list);
 router.post('/bookings', bookingUsers, bookingsCtl.create);

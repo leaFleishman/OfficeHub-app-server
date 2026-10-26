@@ -8,6 +8,7 @@ import type { Booking, Page, User } from '../types/domain.js';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 import { PG, isPgError } from '../utils/pgErrors.js';
 import type {
+  CompanyBookingsQuery,
   CreateBookingBody,
   ListAllBookingsQuery,
   ListBookingsQuery,
@@ -33,6 +34,20 @@ export function listAllForAdmin(actor: User, query: ListAllBookingsQuery): Promi
     page: query.page,
     pageSize: query.pageSize,
   });
+}
+
+export function listForCompany(actor: User, query: CompanyBookingsQuery): Promise<Page<Booking>> {
+  let companyId: number;
+  if (actor.role === ROLES.ADMIN) {
+    if (!query.companyId) throw badRequest('companyId is required', { companyId: 'Required' });
+    companyId = query.companyId;
+  } else {
+    if (actor.companyId === null) throw forbidden('This account is not linked to a company');
+    if (query.companyId !== undefined && query.companyId !== actor.companyId) throw forbidden();
+    companyId = actor.companyId;
+  }
+
+  return bookingsRepo.list({ companyId, includeCancelled: true, page: query.page, pageSize: query.pageSize });
 }
 
 // Calendar view of one room: occupancy is public, details are private.

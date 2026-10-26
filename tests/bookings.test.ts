@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
-import { createBookingBody, listAllBookingsQuery } from '../src/validators/bookings.js';
+import { companyBookingsQuery, createBookingBody, listAllBookingsQuery } from '../src/validators/bookings.js';
 
 const bookingInput = {
   roomId: 1,
@@ -41,6 +41,19 @@ test('all-bookings query does not apply room, date, or employee filters', () => 
       pageSize: 100,
     },
   );
+});
+
+test('company bookings query supports an optional company ID and pagination only', () => {
+  assert.deepEqual(companyBookingsQuery.parse({}), {
+    page: 1,
+    pageSize: 20,
+  });
+  assert.deepEqual(companyBookingsQuery.parse({ companyId: '12', page: '2' }), {
+    companyId: 12,
+    page: 2,
+    pageSize: 20,
+  });
+  assert.equal(companyBookingsQuery.safeParse({ companyId: 'invalid' }).success, false);
 });
 
 const testDatabaseUrl = process.env.OFFICEHUB_TEST_DATABASE_URL;
