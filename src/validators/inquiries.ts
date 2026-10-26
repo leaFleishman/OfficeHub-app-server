@@ -13,7 +13,7 @@ export const listInquiriesQuery = z.object({ status: status.optional(), search, 
 
 export const handleInquiryBody = z.object({
   status: z.enum(['InProgress', 'Closed']),
-  reply: z.string().trim().min(1).max(5000).optional(),
+  reply: z.string().trim().max(5000).optional().transform((value) => value || undefined),
 });
 
 export type CreateInquiryBody = z.infer<typeof createInquiryBody>;

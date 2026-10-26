@@ -213,7 +213,7 @@
         "required": ["status"],
         "properties": {
           "status": { "type": "string", "enum": ["InProgress", "Closed"] },
-          "reply": { "type": "string", "minLength": 1, "maxLength": 5000 }
+          "reply": { "type": "string", "maxLength": 5000 }
         }
       }
     }
